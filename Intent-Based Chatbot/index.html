@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Chatbot</title>
+    <style>
+        body {
+            font-family: 'Verdana', sans-serif;
+            background: linear-gradient(to top, #3b6978, #204051);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chatbox-container {
+            width: 420px;
+            height: 650px;
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #chat-area {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+            background: #f1f1f1;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        #messages {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 15px;
+            max-width: 75%;
+            display: flex;
+            gap: 12px;
+            font-size: 15px;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #6be16f;
+            color: white;
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            background-color: #6daadc;
+            color: white;
+            align-self: flex-start;
+        }
+
+        .avatar {
+            font-size: 17px;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background: #fff;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        #input-field {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid #ccc;
+            border-radius: 30px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        #input-field:focus {
+            border-color: #2196F3;
+        }
+
+        #send-button, #clear-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 50px;
+            background-color: #2196F3;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        #send-button:hover, #clear-button:hover {
+            background-color: #1769aa;
+        }
+
+        #send-button:active, #clear-button:active {
+            transform: scale(0.95);
+        }
+
+        #clear-button {
+            background-color: #f44336;
+        }
+
+        #clear-button:hover {
+            background-color: #d32f2f;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #bdbdbd;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="chatbox-container">
+        <div id="chat-area">
+            <div id="messages">
+                <div class="message bot-message">
+                    <span class="avatar">🤖</span> Hello! How may I assist you today?
+                </div>
+            </div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="input-field" placeholder="Write a message...">
+            <button id="send-button">Send</button>
+            <button id="clear-button">Clear</button>
+        </div>
+    </div>
+    <script>
+        const sendButton = document.getElementById('send-button');
+        const clearButton = document.getElementById('clear-button');
+        const inputField = document.getElementById('input-field');
+        const messagesContainer = document.getElementById('messages');
+        const chatArea = document.getElementById('chat-area');
+
+        async function sendMessage() {
+            const message = inputField.value.trim();
+            if (message) {
+                addMessage(message, 'user-message');
+                inputField.value = '';
+
+                const response = await fetch('http://127.0.0.1:5000/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await response.json();
+                addMessage(data.response, 'bot-message');
+            }
+        }
+
+        function addMessage(content, messageType) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${messageType}`;
+            messageDiv.textContent = content;
+
+            if (messageType === 'bot-message') {
+                const botAvatar = document.createElement('span');
+                botAvatar.className = 'avatar';
+                botAvatar.textContent = '🤖';
+                messageDiv.prepend(botAvatar);
+            }
+
+            messagesContainer.appendChild(messageDiv);
+
+            chatArea.scrollTo({
+                top: chatArea.scrollHeight,
+                behavior: 'smooth'
+            });
+
+            saveChatHistory();
+        }
+
+        function saveChatHistory() {
+            const chatHistory = messagesContainer.innerHTML;
+            localStorage.setItem('chatHistory', chatHistory);
+        }
+
+        function loadChatHistory() {
+            const chatHistory = localStorage.getItem('chatHistory');
+            if (chatHistory) {
+                messagesContainer.innerHTML = chatHistory;
+                chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
+            }
+        }
+
+        function clearChatHistory() {
+            messagesContainer.innerHTML = `
+                <div class="message bot-message">
+                    <span class="avatar">🤖</span> Hello! How may I assist you today?
+                </div>
+            `;
+            localStorage.removeItem('chatHistory');
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        inputField.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        clearButton.addEventListener('click', clearChatHistory);
+
+        window.onload = loadChatHistory;
+    </script>
+</body>
+</html>
